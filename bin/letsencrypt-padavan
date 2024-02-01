@@ -126,6 +126,7 @@ See --help for more details"
 }
 
 connect() {
+    #此函数如此写 没有意义。
     device="ssh -i ${PADAVAN_PRIVATE_KEY} ${PADAVAN_USER}@${host}\
  -p ${PADAVAN_SSH_PORT}"
 
