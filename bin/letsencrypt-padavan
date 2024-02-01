@@ -36,7 +36,7 @@ version() {
 }
 
 log() {
-    echo >&2 -e "${1-}"
+    echo >&2 -e "${1-}" # ${1-} 表示取第一个参数，如果第一个参数为空则取“-”符号后面的值
 }
 
 die() {
@@ -56,6 +56,7 @@ setup_colors() {
 progressbar() {
     # Can't use log() because 'echo' sends a newline at the end of it's output.
     # We don't want that here as it breaks the progressbar display.
+    # kill -0 "$PID" 检查进程是否存在
     printf "${GREEN}[✱]${NOFORMAT} ["
     while kill -0 "$PID" 2> /dev/null; do
         printf  "▓"
@@ -128,7 +129,7 @@ connect() {
     device="ssh -i ${PADAVAN_PRIVATE_KEY} ${PADAVAN_USER}@${host}\
  -p ${PADAVAN_SSH_PORT}"
 
-    RESULT=$?
+    RESULT=$? #检查返回值
 
     if [[ $RESULT == 0 ]]; then
         log "${GREEN}[✓]${NOFORMAT} Connection to device (${host}) successful!"
@@ -184,7 +185,7 @@ upload_files() {
  "${PADAVAN_USER}"@"${host}":/etc/storage/https/server.crt & PID=$!
     progressbar
 
-    RESULT=$?
+    RESULT=$? #检查返回值
 
     if [[ $RESULT == 0 ]]; then
         log "${GREEN}[✓]${NOFORMAT} Certificate uploaded successfully."
@@ -195,9 +196,10 @@ upload_files() {
     log "${GREEN}[✱]${NOFORMAT} Uploading key..."
     scp -q  -P "${PADAVAN_SSH_PORT}" -i "${PADAVAN_PRIVATE_KEY}" "${CERT_KEY}"\
  "${PADAVAN_USER}"@"${host}":/etc/storage/https/server.key & PID=$!
+    #PID=$! 表示取最后一个进程的pid
     progressbar
 
-    RESULT=$?
+    RESULT=$? #检查返回值
 
     if [[ $RESULT == 0 ]]; then
         log "${GREEN}[✓]${NOFORMAT} Certificate key uploaded successfully."
@@ -209,7 +211,7 @@ upload_files() {
 restart_httpd() {
     killall httpd && /usr/sbin/httpd -s 443
 
-    RESULT=$?
+    RESULT=$? #检查返回值
 
     if [[ $RESULT == 0 ]]; then
         log "${GREEN}[✓]${NOFORMAT} httpd restarted successfully! Device\
@@ -228,12 +230,14 @@ main() {
 
     for host in "${PADAVAN_HOSTS[@]}"; do
         connect
+        #远程执行system_info命令
         $device "$(declare -f log die system_info); system_info"
         upload_files
+        #远程执行restart_httpd命令
         $device "$(declare -f log die restart_httpd); restart_httpd"
     done
 }
 
-parse_params "$@"
+parse_params "$@" #分解所有参数
 setup_colors
 main
