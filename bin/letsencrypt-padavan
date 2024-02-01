@@ -125,20 +125,6 @@ See --help for more details"
     return 0
 }
 
-connect() {
-    #此函数如此写 没有意义。
-    device="ssh -i ${PADAVAN_PRIVATE_KEY} ${PADAVAN_USER}@${host}\
- -p ${PADAVAN_SSH_PORT}"
-
-    RESULT=$? #检查返回值
-
-    if [[ $RESULT == 0 ]]; then
-        log "${GREEN}[✓]${NOFORMAT} Connection to device (${host}) successful!"
-    else
-        die "${RED}[✗]${NOFORMAT} Error connecting to device. (${host})"
-    fi
-}
-
 system_info() {
     # ASCII art taken from https://github.com/dylanaraps/pfetch
     log """        ____     $USER@$(uname -n)
@@ -151,6 +137,24 @@ system_info() {
     _/\\ __)/_)   memory: $(free -m | awk 'NR==2{printf "%.0f/%.0fMB\n", $3/1000,$2/1000}')
     \/-____\/    shell: \"$SHELL\" """
 }
+
+
+connect() {
+    #连接到指定远程服务器，并显示系统信息
+    device="ssh -i ${PADAVAN_PRIVATE_KEY} ${PADAVAN_USER}@${host}\
+ -p ${PADAVAN_SSH_PORT}"
+
+    #远程执行system_info命令
+    $device "$(declare -f log die system_info); system_info"
+    RESULT=$? #检查返回值
+
+    if [[ $RESULT == 0 ]]; then
+        log "${GREEN}[✓]${NOFORMAT} Connection to device (${host}) successful!"
+    else
+        die "${RED}[✗]${NOFORMAT} Error connecting to device. (${host})"
+    fi
+}
+
 
 check_certificate_exists() {
     if [ ! -f "${CERT_CHAIN}" ] && [ ! -f "${CERT_KEY}" ]; then
@@ -230,9 +234,9 @@ main() {
     get_certificate_info
 
     for host in "${PADAVAN_HOSTS[@]}"; do
+        #连接远程服务器
         connect
-        #远程执行system_info命令
-        $device "$(declare -f log die system_info); system_info"
+        #上传所需文件
         upload_files
         #远程执行restart_httpd命令
         $device "$(declare -f log die restart_httpd); restart_httpd"
